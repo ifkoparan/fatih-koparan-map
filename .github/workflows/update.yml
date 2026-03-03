@@ -1,0 +1,38 @@
+name: Weekly Video Update
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'  # Her Pazartesi 06:00 UTC
+  workflow_dispatch:  # Manuel tetikleme
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install yt-dlp
+        run: pip install yt-dlp
+
+      - name: Fetch new videos
+        run: node scripts/fetch-videos.js
+
+      - name: Geocode new videos
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: node scripts/geocode.js
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add raw_videos.json videos.json
+          git diff --staged --quiet || git commit -m "Update video data $(date +%Y-%m-%d)"
+          git push

@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fatih Koparan - Dünya Haritası</title>
+  <script src="https://unpkg.com/globe.gl@2"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: #000;
+      color: #fff;
+      overflow: hidden;
+      height: 100vh;
+    }
+    #globeViz { width: 100vw; height: 100vh; }
+
+    /* Header */
+    #header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 24px;
+      background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, transparent 100%);
+      pointer-events: none;
+    }
+    #header > * { pointer-events: auto; }
+    #header h1 {
+      font-size: 20px;
+      font-weight: 600;
+      letter-spacing: -0.3px;
+    }
+    #header h1 span { color: #ff4444; }
+    #stats {
+      font-size: 13px;
+      opacity: 0.7;
+    }
+
+    /* Sidebar */
+    #sidebar {
+      position: fixed;
+      top: 60px;
+      left: 0;
+      bottom: 0;
+      width: 360px;
+      background: rgba(10, 10, 15, 0.92);
+      backdrop-filter: blur(20px);
+      border-right: 1px solid rgba(255,255,255,0.08);
+      z-index: 90;
+      display: flex;
+      flex-direction: column;
+      transform: translateX(0);
+      transition: transform 0.3s ease;
+    }
+    #sidebar.hidden { transform: translateX(-100%); }
+
+    #toggle-sidebar {
+      position: fixed;
+      top: 72px;
+      left: 12px;
+      z-index: 95;
+      background: rgba(30,30,40,0.9);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: #fff;
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s;
+    }
+    #sidebar:not(.hidden) ~ #toggle-sidebar { left: 372px; }
+
+    #search-box {
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    #search-box input {
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.06);
+      color: #fff;
+      font-size: 14px;
+      outline: none;
+    }
+    #search-box input:focus {
+      border-color: rgba(255,68,68,0.5);
+    }
+    #search-box input::placeholder { color: rgba(255,255,255,0.35); }
+
+    /* Country filter */
+    #country-filter {
+      padding: 8px 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      max-height: 120px;
+      overflow-y: auto;
+    }
+    .country-tag {
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.1);
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .country-tag:hover { background: rgba(255,68,68,0.2); }
+    .country-tag.active {
+      background: rgba(255,68,68,0.3);
+      border-color: #ff4444;
+    }
+
+    /* Video list */
+    #video-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 0;
+    }
+    #video-list::-webkit-scrollbar { width: 4px; }
+    #video-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+
+    .video-item {
+      display: flex;
+      gap: 10px;
+      padding: 8px 16px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .video-item:hover { background: rgba(255,255,255,0.06); }
+    .video-item img {
+      width: 120px;
+      height: 68px;
+      object-fit: cover;
+      border-radius: 6px;
+      flex-shrink: 0;
+    }
+    .video-info { flex: 1; min-width: 0; }
+    .video-info h3 {
+      font-size: 12.5px;
+      font-weight: 500;
+      line-height: 1.35;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      margin-bottom: 4px;
+    }
+    .video-info .location-badge {
+      font-size: 11px;
+      color: rgba(255,255,255,0.5);
+    }
+
+    /* Popup */
+    #popup-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      background: rgba(0,0,0,0.5);
+      align-items: center;
+      justify-content: center;
+    }
+    #popup-overlay.show { display: flex; }
+    #popup {
+      background: #1a1a24;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px;
+      overflow: hidden;
+      max-width: 420px;
+      width: 90%;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+    }
+    #popup .thumb-container {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16/9;
+      overflow: hidden;
+    }
+    #popup .thumb-container img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    #popup .play-btn {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,0.3);
+      transition: background 0.2s;
+    }
+    #popup .play-btn:hover { background: rgba(0,0,0,0.1); }
+    #popup .play-btn svg { width: 60px; height: 60px; fill: #fff; opacity: 0.9; }
+    #popup .popup-body { padding: 16px 20px; }
+    #popup .popup-body h2 {
+      font-size: 15px;
+      font-weight: 600;
+      line-height: 1.4;
+      margin-bottom: 8px;
+    }
+    #popup .popup-body .popup-location {
+      font-size: 13px;
+      color: rgba(255,255,255,0.5);
+      margin-bottom: 12px;
+    }
+    #popup .popup-body a {
+      display: inline-block;
+      padding: 8px 20px;
+      background: #ff4444;
+      color: #fff;
+      text-decoration: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+    #popup .popup-body a:hover { background: #e63939; }
+
+    /* Location group popup (multiple videos) */
+    .group-list { max-height: 300px; overflow-y: auto; }
+    .group-list .video-item { padding: 10px 16px; }
+    .group-list .video-item:not(:last-child) { border-bottom: 1px solid rgba(255,255,255,0.06); }
+
+    @media (max-width: 600px) {
+      #sidebar { width: 100%; }
+      #sidebar:not(.hidden) ~ #toggle-sidebar { left: calc(100% - 48px); }
+    }
+  </style>
+</head>
+<body>
+
+<div id="header">
+  <h1><span>&#9679;</span> Fatih Koparan <span>|</span> Dünya Haritası</h1>
+  <div id="stats"></div>
+</div>
+
+<div id="sidebar">
+  <div id="search-box">
+    <input type="text" id="search" placeholder="Video veya ülke ara...">
+  </div>
+  <div id="country-filter"></div>
+  <div id="video-list"></div>
+</div>
+<button id="toggle-sidebar" title="Menü">&#9776;</button>
+
+<div id="globeViz"></div>
+
+<div id="popup-overlay" onclick="if(event.target===this)closePopup()">
+  <div id="popup">
+    <div class="thumb-container">
+      <img id="popup-thumb" src="" alt="">
+      <a id="popup-play" class="play-btn" href="" target="_blank">
+        <svg viewBox="0 0 68 48"><path d="M66.52 7.74c-.78-2.93-2.49-5.41-5.42-6.19C55.79.13 34 0 34 0S12.21.13 6.9 1.55C3.97 2.33 2.27 4.81 1.48 7.74.06 13.05 0 24 0 24s.06 10.95 1.48 16.26c.78 2.93 2.49 5.41 5.42 6.19C12.21 47.87 34 48 34 48s21.79-.13 27.1-1.55c2.93-.78 4.64-3.26 5.42-6.19C67.94 34.95 68 24 68 24s-.06-10.95-1.48-16.26z" fill="#f00"/><path d="M45 24L27 14v20" fill="#fff"/></svg>
+      </a>
+    </div>
+    <div class="popup-body">
+      <h2 id="popup-title"></h2>
+      <div class="popup-location" id="popup-location"></div>
+      <a id="popup-link" href="" target="_blank">YouTube'da İzle</a>
+    </div>
+  </div>
+</div>
+
+<script>
+let allVideos = [];
+let globe;
+let activeCountry = null;
+
+async function init() {
+  const res = await fetch('videos.json');
+  allVideos = await res.json();
+
+  const withLocation = allVideos.filter(v => v.lat != null);
+  document.getElementById('stats').textContent =
+    `${withLocation.length} video  ·  ${new Set(withLocation.map(v => v.country)).size} ülke`;
+
+  // Group videos by location (round to 1 decimal to cluster nearby)
+  const groups = {};
+  withLocation.forEach(v => {
+    const key = `${v.lat.toFixed(1)},${v.lng.toFixed(1)}`;
+    if (!groups[key]) groups[key] = { lat: v.lat, lng: v.lng, country: v.country, city: v.city, videos: [] };
+    groups[key].videos.push(v);
+  });
+  const pointsData = Object.values(groups);
+
+  // Color palette by country
+  const countries = [...new Set(withLocation.map(v => v.country))].sort();
+  const colors = {};
+  countries.forEach((c, i) => {
+    const hue = (i * 137.5) % 360;
+    colors[c] = `hsl(${hue}, 70%, 60%)`;
+  });
+
+  // Initialize globe
+  globe = Globe()(document.getElementById('globeViz'))
+    .globeImageUrl('//unpkg.com/three-globe/example/img/earth-night.jpg')
+    .backgroundImageUrl('//unpkg.com/three-globe/example/img/night-sky.png')
+    .pointsData(pointsData)
+    .pointLat(d => d.lat)
+    .pointLng(d => d.lng)
+    .pointAltitude(d => Math.min(d.videos.length * 0.04, 0.5))
+    .pointRadius(d => 0.3 + Math.min(d.videos.length * 0.15, 1.2))
+    .pointColor(d => colors[d.country] || '#ff4444')
+    .pointLabel(d => {
+      const count = d.videos.length;
+      const loc = d.city ? `${d.city}, ${d.country}` : d.country;
+      return `<div style="font-family:system-ui;background:rgba(0,0,0,0.8);padding:6px 12px;border-radius:8px;font-size:13px;line-height:1.4">
+        <b>${loc}</b><br><span style="opacity:0.7">${count} video</span>
+      </div>`;
+    })
+    .onPointClick(d => {
+      if (d.videos.length === 1) {
+        showPopup(d.videos[0]);
+      } else {
+        showGroupPopup(d);
+      }
+    })
+    .pointsMerge(false)
+    .pointsTransitionDuration(800);
+
+  // Auto-rotate
+  globe.controls().autoRotate = true;
+  globe.controls().autoRotateSpeed = 0.5;
+  globe.controls().enableDamping = true;
+
+  // Build country filter
+  buildCountryFilter(countries, colors);
+
+  // Build video list
+  renderVideoList(withLocation);
+
+  // Search
+  document.getElementById('search').addEventListener('input', e => {
+    const q = e.target.value.toLowerCase();
+    const filtered = withLocation.filter(v =>
+      v.title.toLowerCase().includes(q) ||
+      (v.country && v.country.toLowerCase().includes(q)) ||
+      (v.city && v.city.toLowerCase().includes(q))
+    );
+    renderVideoList(filtered);
+  });
+}
+
+function buildCountryFilter(countries, colors) {
+  const container = document.getElementById('country-filter');
+
+  // "All" tag
+  const allTag = document.createElement('span');
+  allTag.className = 'country-tag active';
+  allTag.textContent = `Tümü (${allVideos.filter(v => v.lat).length})`;
+  allTag.onclick = () => {
+    activeCountry = null;
+    document.querySelectorAll('.country-tag').forEach(t => t.classList.remove('active'));
+    allTag.classList.add('active');
+    const withLoc = allVideos.filter(v => v.lat != null);
+    renderVideoList(withLoc);
+    updateGlobePoints(withLoc);
+  };
+  container.appendChild(allTag);
+
+  countries.forEach(country => {
+    const count = allVideos.filter(v => v.country === country && v.lat).length;
+    const tag = document.createElement('span');
+    tag.className = 'country-tag';
+    tag.textContent = `${country} (${count})`;
+    tag.style.borderColor = colors[country];
+    tag.onclick = () => {
+      activeCountry = country;
+      document.querySelectorAll('.country-tag').forEach(t => t.classList.remove('active'));
+      tag.classList.add('active');
+      const filtered = allVideos.filter(v => v.country === country && v.lat);
+      renderVideoList(filtered);
+      updateGlobePoints(filtered);
+      // Fly to country
+      if (filtered.length > 0) {
+        const avgLat = filtered.reduce((s, v) => s + v.lat, 0) / filtered.length;
+        const avgLng = filtered.reduce((s, v) => s + v.lng, 0) / filtered.length;
+        globe.pointOfView({ lat: avgLat, lng: avgLng, altitude: 1.5 }, 1000);
+      }
+    };
+    container.appendChild(tag);
+  });
+}
+
+function updateGlobePoints(videos) {
+  const groups = {};
+  videos.forEach(v => {
+    const key = `${v.lat.toFixed(1)},${v.lng.toFixed(1)}`;
+    if (!groups[key]) groups[key] = { lat: v.lat, lng: v.lng, country: v.country, city: v.city, videos: [] };
+    groups[key].videos.push(v);
+  });
+  globe.pointsData(Object.values(groups));
+}
+
+function renderVideoList(videos) {
+  const list = document.getElementById('video-list');
+  list.innerHTML = '';
+  videos.forEach(v => {
+    const item = document.createElement('div');
+    item.className = 'video-item';
+    item.innerHTML = `
+      <img src="${v.thumbnail}" alt="" loading="lazy">
+      <div class="video-info">
+        <h3>${escHtml(v.title)}</h3>
+        <div class="location-badge">${v.city ? v.city + ', ' : ''}${v.country || 'Bilinmeyen'}</div>
+      </div>
+    `;
+    item.onclick = () => {
+      showPopup(v);
+      if (v.lat) {
+        globe.pointOfView({ lat: v.lat, lng: v.lng, altitude: 1.2 }, 1000);
+      }
+    };
+    list.appendChild(item);
+  });
+}
+
+function showPopup(video) {
+  document.getElementById('popup-thumb').src = `https://i.ytimg.com/vi/${video.id}/hqdefault.jpg`;
+  document.getElementById('popup-title').textContent = video.title;
+  document.getElementById('popup-location').textContent =
+    video.city ? `${video.city}, ${video.country}` : (video.country || '');
+  document.getElementById('popup-link').href = video.url;
+  document.getElementById('popup-play').href = video.url;
+  document.getElementById('popup-overlay').classList.add('show');
+  globe.controls().autoRotate = false;
+}
+
+function showGroupPopup(group) {
+  const popup = document.getElementById('popup');
+  const loc = group.city ? `${group.city}, ${group.country}` : group.country;
+  popup.innerHTML = `
+    <div class="popup-body">
+      <h2>${loc} (${group.videos.length} video)</h2>
+      <div class="group-list">
+        ${group.videos.map(v => `
+          <div class="video-item" onclick="event.stopPropagation(); window.open('${v.url}', '_blank')">
+            <img src="${v.thumbnail}" alt="" loading="lazy">
+            <div class="video-info">
+              <h3>${escHtml(v.title)}</h3>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+  document.getElementById('popup-overlay').classList.add('show');
+  globe.controls().autoRotate = false;
+}
+
+function closePopup() {
+  document.getElementById('popup-overlay').classList.remove('show');
+  // Restore popup HTML
+  document.getElementById('popup').innerHTML = `
+    <div class="thumb-container">
+      <img id="popup-thumb" src="" alt="">
+      <a id="popup-play" class="play-btn" href="" target="_blank">
+        <svg viewBox="0 0 68 48"><path d="M66.52 7.74c-.78-2.93-2.49-5.41-5.42-6.19C55.79.13 34 0 34 0S12.21.13 6.9 1.55C3.97 2.33 2.27 4.81 1.48 7.74.06 13.05 0 24 0 24s.06 10.95 1.48 16.26c.78 2.93 2.49 5.41 5.42 6.19C12.21 47.87 34 48 34 48s21.79-.13 27.1-1.55c2.93-.78 4.64-3.26 5.42-6.19C67.94 34.95 68 24 68 24s-.06-10.95-1.48-16.26z" fill="#f00"/><path d="M45 24L27 14v20" fill="#fff"/></svg>
+      </a>
+    </div>
+    <div class="popup-body">
+      <h2 id="popup-title"></h2>
+      <div class="popup-location" id="popup-location"></div>
+      <a id="popup-link" href="" target="_blank">YouTube'da İzle</a>
+    </div>
+  `;
+  globe.controls().autoRotate = true;
+}
+
+function escHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+// Toggle sidebar
+document.getElementById('toggle-sidebar').onclick = () => {
+  document.getElementById('sidebar').classList.toggle('hidden');
+};
+
+init();
+</script>
+</body>
+</html>
