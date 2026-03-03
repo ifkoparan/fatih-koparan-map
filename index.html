@@ -237,9 +237,40 @@
     .group-list .video-item { padding: 10px 16px; }
     .group-list .video-item:not(:last-child) { border-bottom: 1px solid rgba(255,255,255,0.06); }
 
-    @media (max-width: 600px) {
-      #sidebar { width: 100%; }
-      #sidebar:not(.hidden) ~ #toggle-sidebar { left: calc(100% - 48px); }
+    @media (max-width: 768px) {
+      #header h1 { font-size: 15px; }
+      #sidebar {
+        top: auto;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        height: 55vh;
+        border-right: none;
+        border-top: 1px solid rgba(255,255,255,0.12);
+        border-radius: 16px 16px 0 0;
+        transform: translateY(100%);
+      }
+      #sidebar.open { transform: translateY(0); }
+      #sidebar.hidden { transform: translateY(100%); }
+      #toggle-sidebar {
+        top: auto;
+        bottom: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        font-size: 20px;
+        background: rgba(255,68,68,0.85);
+        border-color: rgba(255,68,68,0.4);
+        box-shadow: 0 4px 20px rgba(255,68,68,0.3);
+      }
+      #sidebar:not(.hidden) ~ #toggle-sidebar,
+      #sidebar.open ~ #toggle-sidebar {
+        left: 50%;
+        bottom: calc(55vh + 8px);
+      }
     }
   </style>
 </head>
@@ -426,6 +457,9 @@ function renderVideoList(videos) {
       if (v.lat) {
         globe.pointOfView({ lat: v.lat, lng: v.lng, altitude: 1.2 }, 1000);
       }
+      if (window.innerWidth <= 768) {
+        document.getElementById('sidebar').classList.add('hidden');
+      }
     };
     list.appendChild(item);
   });
@@ -487,6 +521,11 @@ function escHtml(s) {
   const d = document.createElement('div');
   d.textContent = s;
   return d.innerHTML;
+}
+
+// Start sidebar hidden on mobile
+if (window.innerWidth <= 768) {
+  document.getElementById('sidebar').classList.add('hidden');
 }
 
 // Toggle sidebar
