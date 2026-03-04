@@ -249,10 +249,11 @@
         border-right: none;
         border-top: 1px solid rgba(255,255,255,0.12);
         border-radius: 16px 16px 0 0;
+        transform: translateX(0) translateY(0);
+      }
+      #sidebar.hidden {
         transform: translateY(100%);
       }
-      #sidebar.open { transform: translateY(0); }
-      #sidebar.hidden { transform: translateY(100%); }
       #toggle-sidebar {
         top: auto;
         bottom: 16px;
@@ -266,8 +267,7 @@
         border-color: rgba(255,68,68,0.4);
         box-shadow: 0 4px 20px rgba(255,68,68,0.3);
       }
-      #sidebar:not(.hidden) ~ #toggle-sidebar,
-      #sidebar.open ~ #toggle-sidebar {
+      #sidebar:not(.hidden) ~ #toggle-sidebar {
         left: 50%;
         bottom: calc(55vh + 8px);
       }
@@ -364,6 +364,9 @@ async function init() {
     })
     .pointsMerge(false)
     .pointsTransitionDuration(800);
+
+  // Start view on Turkey
+  globe.pointOfView({ lat: 39.9, lng: 32.8, altitude: 2.2 }, 0);
 
   // Auto-rotate
   globe.controls().autoRotate = true;
