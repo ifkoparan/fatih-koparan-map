@@ -139,9 +139,10 @@
       gap: 10px;
       padding: 8px 16px;
       cursor: pointer;
-      transition: background 0.15s;
+      transition: background 0.15s, opacity 0.3s;
     }
     .video-item:hover { background: rgba(255,255,255,0.06); }
+    .video-item.no-click { pointer-events: none; opacity: 0.5; }
     .video-item img {
       width: 120px;
       height: 68px;
@@ -423,7 +424,30 @@ async function init() {
       }
     })
     .pointsMerge(false)
-    .pointsTransitionDuration(isMobile ? 400 : 800);
+    .pointsTransitionDuration(isMobile ? 400 : 800)
+    .onGlobeClick(({ lat, lng }) => {
+      // Find nearest point within threshold to make clicking easier
+      const threshold = isMobile ? 5 : 3; // degrees
+      let nearest = null;
+      let minDist = Infinity;
+      for (const p of pointsData) {
+        const dLat = p.lat - lat;
+        const dLng = p.lng - lng;
+        const dist = Math.sqrt(dLat * dLat + dLng * dLng);
+        if (dist < minDist) {
+          minDist = dist;
+          nearest = p;
+        }
+      }
+      if (nearest && minDist < threshold) {
+        if (arcMode === 'location') showLocationArcs(nearest);
+        if (nearest.videos.length === 1) {
+          showPopup(nearest.videos[0]);
+        } else {
+          showGroupPopup(nearest);
+        }
+      }
+    });
 
   // Mobile: lower pixel ratio for performance
   if (isMobile) {
@@ -564,7 +588,7 @@ function showGroupPopup(group) {
       <h2>${loc} (${sorted.length} video)</h2>
       <div class="group-list">
         ${sorted.map(v => `
-          <div class="video-item" onclick="event.stopPropagation(); window.open('${v.url}', '_blank')">
+          <div class="video-item no-click" onclick="event.stopPropagation(); if(!this.classList.contains('no-click')) window.open('${v.url}', '_blank')">
             <img src="${v.thumbnail}" alt="" loading="lazy">
             <div class="video-info">
               <h3>${escHtml(v.title)}</h3>
@@ -577,6 +601,10 @@ function showGroupPopup(group) {
   `;
   document.getElementById('popup-overlay').classList.add('show');
   globe.controls().autoRotate = false;
+  // Enable clicks after 1 second to prevent accidental double-click
+  setTimeout(() => {
+    popup.querySelectorAll('.video-item.no-click').forEach(el => el.classList.remove('no-click'));
+  }, 1000);
 }
 
 function closePopup() {
