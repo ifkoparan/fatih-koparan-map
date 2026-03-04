@@ -142,7 +142,7 @@
       transition: background 0.15s, opacity 0.3s;
     }
     .video-item:hover { background: rgba(255,255,255,0.06); }
-    .video-item.no-click { pointer-events: none; opacity: 0.5; }
+    .video-item.no-click { pointer-events: none; opacity: 0.85; }
     .video-item img {
       width: 120px;
       height: 68px;
@@ -427,7 +427,7 @@ async function init() {
     .pointsTransitionDuration(isMobile ? 400 : 800)
     .onGlobeClick(({ lat, lng }) => {
       // Find nearest point within threshold to make clicking easier
-      const threshold = isMobile ? 5 : 3; // degrees
+      const threshold = isMobile ? 8 : 5; // degrees
       let nearest = null;
       let minDist = Infinity;
       for (const p of pointsData) {
@@ -460,10 +460,15 @@ async function init() {
   // Start view on Turkey
   globe.pointOfView({ lat: 39.9, lng: 32.8, altitude: 2.2 }, 0);
 
-  // Auto-rotate
+  // Auto-rotate with dynamic speed based on zoom level
   globe.controls().autoRotate = true;
   globe.controls().autoRotateSpeed = 0.2;
   globe.controls().enableDamping = true;
+  globe.controls().addEventListener('change', () => {
+    const alt = globe.pointOfView().altitude;
+    // Slow down as user zooms in: full speed at alt>=2, nearly stopped at alt<0.5
+    globe.controls().autoRotateSpeed = Math.min(0.2, alt * 0.1);
+  });
 
   // Build country filter
   buildCountryFilter(countries, colors);
@@ -567,10 +572,19 @@ function showPopup(video) {
   const locText = video.city ? `${video.city}, ${video.country}` : (video.country || '');
   const dateText = video.uploadDate ? ` · ${formatDate(video.uploadDate)}` : '';
   document.getElementById('popup-location').textContent = locText + dateText;
-  document.getElementById('popup-link').href = video.url;
-  document.getElementById('popup-play').href = video.url;
+  const playBtn = document.getElementById('popup-play');
+  const linkBtn = document.getElementById('popup-link');
+  playBtn.href = video.url;
+  linkBtn.href = video.url;
+  // Disable clicks for 1s to prevent accidental double-click
+  playBtn.style.pointerEvents = 'none';
+  linkBtn.style.pointerEvents = 'none';
   document.getElementById('popup-overlay').classList.add('show');
   globe.controls().autoRotate = false;
+  setTimeout(() => {
+    playBtn.style.pointerEvents = '';
+    linkBtn.style.pointerEvents = '';
+  }, 1000);
 }
 
 function showGroupPopup(group) {
