@@ -103,10 +103,10 @@
     "title": "The Cursed People of Thamud and the Warning of Prophet Muhammad",
     "url": "https://www.youtube.com/watch?v=W7XMTe6gIlM",
     "thumbnail": "https://i.ytimg.com/vi/W7XMTe6gIlM/mqdefault.jpg",
-    "country": null,
-    "city": null,
-    "lat": null,
-    "lng": null,
+    "country": "Saudi Arabia",
+    "city": "Al-Ula",
+    "lat": 26.6433,
+    "lng": 37.9444,
     "uploadDate": "2026-01-18"
   },
   {
@@ -125,10 +125,10 @@
     "title": "The Prophet Muhammad Was Poisoned Here! The Fortress of Khaybar and the War with the Jews",
     "url": "https://www.youtube.com/watch?v=Gmui2fD1ep0",
     "thumbnail": "https://i.ytimg.com/vi/Gmui2fD1ep0/mqdefault.jpg",
-    "country": null,
-    "city": null,
-    "lat": null,
-    "lng": null,
+    "country": "Saudi Arabia",
+    "city": "Khaybar",
+    "lat": 25.7,
+    "lng": 39.3,
     "uploadDate": "2026-01-11"
   },
   {
@@ -279,10 +279,10 @@
     "title": "Breaking Bad & Better Call Saul Filming Locations",
     "url": "https://www.youtube.com/watch?v=1ELGzki08SQ",
     "thumbnail": "https://i.ytimg.com/vi/1ELGzki08SQ/mqdefault.jpg",
-    "country": null,
-    "city": null,
-    "lat": null,
-    "lng": null,
+    "country": "United States",
+    "city": "Albuquerque",
+    "lat": 35.0853,
+    "lng": -106.6474,
     "uploadDate": "2025-11-30"
   },
   {
@@ -335,9 +335,9 @@
     "url": "https://www.youtube.com/watch?v=6INDC8JIGoQ",
     "thumbnail": "https://i.ytimg.com/vi/6INDC8JIGoQ/mqdefault.jpg",
     "country": "Taiwan",
-    "city": null,
-    "lat": null,
-    "lng": null,
+    "city": "Taipei",
+    "lat": 25.0339,
+    "lng": 121.5654,
     "uploadDate": "2025-11-09"
   },
   {
@@ -543,10 +543,10 @@
     "title": "Fishing with Birds in China! | Chinese Cormorant Fishermen",
     "url": "https://www.youtube.com/watch?v=e3m0M_-z3pw",
     "thumbnail": "https://i.ytimg.com/vi/e3m0M_-z3pw/mqdefault.jpg",
-    "country": null,
-    "city": null,
-    "lat": null,
-    "lng": null,
+    "country": "China",
+    "city": "Beijing",
+    "lat": 39.9042,
+    "lng": 116.4074,
     "uploadDate": "2025-09-25"
   },
   {
@@ -686,10 +686,10 @@
     "title": "Kobra Bite! Did He Die? Indonesian Street Food",
     "url": "https://www.youtube.com/watch?v=aP3VTTNgtFg",
     "thumbnail": "https://i.ytimg.com/vi/aP3VTTNgtFg/mqdefault.jpg",
-    "country": null,
-    "city": null,
-    "lat": null,
-    "lng": null,
+    "country": "Indonesia",
+    "city": "Jakarta",
+    "lat": -6.2089,
+    "lng": 106.8223,
     "uploadDate": "2025-07-21"
   },
   {
@@ -1016,10 +1016,10 @@
     "title": "The World's Most Dangerous Drug Hub – The Golden Triangle (Myanmar - Thailand - Laos)",
     "url": "https://www.youtube.com/watch?v=ZyKZmnOx180",
     "thumbnail": "https://i.ytimg.com/vi/ZyKZmnOx180/mqdefault.jpg",
-    "country": null,
+    "country": "Myanmar",
     "city": null,
-    "lat": null,
-    "lng": null,
+    "lat": 20,
+    "lng": 100,
     "uploadDate": "2025-03-10"
   },
   {
@@ -1029,8 +1029,8 @@
     "thumbnail": "https://i.ytimg.com/vi/pZjCWBVXQgs/mqdefault.jpg",
     "country": "Thailand",
     "city": null,
-    "lat": null,
-    "lng": null,
+    "lat": 13.75,
+    "lng": 100.4833,
     "uploadDate": "2025-03-01"
   },
   {
@@ -1676,10 +1676,10 @@
     "title": "Cannibalistic Cult Steals Flesh from Corpses - Cannibalistic Aghori Sect Members",
     "url": "https://www.youtube.com/watch?v=__kboFakZO8",
     "thumbnail": "https://i.ytimg.com/vi/__kboFakZO8/mqdefault.jpg",
-    "country": null,
-    "city": null,
-    "lat": null,
-    "lng": null,
+    "country": "India",
+    "city": "Varanasi",
+    "lat": 25.3167,
+    "lng": 83.0167,
     "uploadDate": "2024-07-16"
   },
   {
@@ -2875,10 +2875,10 @@
     "title": "Vargas and Hande Baladın Show - Filenin Sultanlari Won the World Cup. Türkiye vs Belgium",
     "url": "https://www.youtube.com/watch?v=7SNFKF5EBT8",
     "thumbnail": "https://i.ytimg.com/vi/7SNFKF5EBT8/mqdefault.jpg",
-    "country": null,
+    "country": "Turkey",
     "city": null,
-    "lat": null,
-    "lng": null,
+    "lat": 39,
+    "lng": 35,
     "uploadDate": "2023-09-24"
   },
   {
@@ -3162,9 +3162,9 @@
     "url": "https://www.youtube.com/watch?v=-rS4DCIJX-Y",
     "thumbnail": "https://i.ytimg.com/vi/-rS4DCIJX-Y/mqdefault.jpg",
     "country": "Mongolia",
-    "city": "Ordu-Balık",
-    "lat": null,
-    "lng": null,
+    "city": "Ulaanbaatar",
+    "lat": 47.8867,
+    "lng": 106.9167,
     "uploadDate": "2023-08-14"
   },
   {
@@ -3240,8 +3240,8 @@
     "thumbnail": "https://i.ytimg.com/vi/OuYwPDcGXnA/mqdefault.jpg",
     "country": "Lebanon",
     "city": "Kalashra",
-    "lat": null,
-    "lng": null,
+    "lat": 33.85,
+    "lng": 35.85,
     "uploadDate": "2023-07-31"
   },
   {
@@ -4008,10 +4008,10 @@
     "title": "ONLY 5 DOLLARS - BEAUTIFUL VİETNAMESE BARBER!!! VIP MASSAGE",
     "url": "https://www.youtube.com/watch?v=eFnqbHBJyVw",
     "thumbnail": "https://i.ytimg.com/vi/eFnqbHBJyVw/mqdefault.jpg",
-    "country": null,
-    "city": null,
-    "lat": null,
-    "lng": null,
+    "country": "Vietnam",
+    "city": "Hanoi",
+    "lat": 21.0333,
+    "lng": 105.85,
     "uploadDate": "2023-02-25"
   },
   {
@@ -4140,10 +4140,10 @@
     "title": "MASSAGERS - We Tried Buttermilk & Olives for Thais",
     "url": "https://www.youtube.com/watch?v=vrr8phKPWiM",
     "thumbnail": "https://i.ytimg.com/vi/vrr8phKPWiM/mqdefault.jpg",
-    "country": null,
+    "country": "Thailand",
     "city": null,
-    "lat": null,
-    "lng": null,
+    "lat": 13.75,
+    "lng": 100.4833,
     "uploadDate": "2022-12-01"
   },
   {
@@ -4580,10 +4580,10 @@
     "title": "How Do Colombian Webcam Workers Work? #1 (Documentary)",
     "url": "https://www.youtube.com/watch?v=L25Tv_thg48",
     "thumbnail": "https://i.ytimg.com/vi/L25Tv_thg48/mqdefault.jpg",
-    "country": null,
-    "city": null,
-    "lat": null,
-    "lng": null,
+    "country": "Colombia",
+    "city": "Bogota",
+    "lat": 4.5983,
+    "lng": -74.0761,
     "uploadDate": "2021-10-13"
   },
   {
@@ -4800,10 +4800,10 @@
     "title": "4000 KM from Istanbul to Barcelona in 4 Days with Ferrari",
     "url": "https://www.youtube.com/watch?v=z5dC2Cd7uJ0",
     "thumbnail": "https://i.ytimg.com/vi/z5dC2Cd7uJ0/mqdefault.jpg",
-    "country": null,
-    "city": null,
-    "lat": null,
-    "lng": null,
+    "country": "Spain",
+    "city": "Barcelona",
+    "lat": 41.3879,
+    "lng": 2.169,
     "uploadDate": "2020-04-07"
   }
 ]

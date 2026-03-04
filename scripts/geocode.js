@@ -27,6 +27,9 @@ Return ONLY a JSON array with objects having these fields:
 
 If a video title doesn't mention any specific location, return null for all location fields.
 If only a country is mentioned without a specific city, use the capital city's coordinates.
+Try harder to find locations - look for country names, city names, landmarks, cultural references.
+For example: 'Golden Triangle' is in Thailand/Myanmar/Laos border area, 'Breaking Bad filming locations' is Albuquerque USA, 'Barcelona' is Spain, etc.
+Also look for country flag emojis in titles (e.g. 🇹🇼 = Taiwan, 🇨🇳 = China, 🇮🇩 = Indonesia, 🇻🇳 = Vietnam, 🇨🇴 = Colombia, etc.).
 
 Video titles:
 ${titles.map((t, i) => `${i}: ${t}`).join('\n')}
