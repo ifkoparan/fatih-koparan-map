@@ -164,6 +164,11 @@
       font-size: 11px;
       color: rgba(255,255,255,0.5);
     }
+    .video-info .date-badge {
+      font-size: 10px;
+      color: rgba(255,255,255,0.35);
+      margin-top: 2px;
+    }
 
     /* Popup */
     #popup-overlay {
@@ -232,6 +237,40 @@
     }
     #popup .popup-body a:hover { background: #e63939; }
 
+    /* Arc mode toggle */
+    #arc-toggle {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 95;
+      background: rgba(30,30,40,0.9);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: #fff;
+      padding: 8px 14px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 12px;
+      font-family: inherit;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+      backdrop-filter: blur(10px);
+    }
+    #arc-toggle:hover { background: rgba(50,50,65,0.95); }
+    #arc-toggle .arc-icon {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 2px solid currentColor;
+      position: relative;
+    }
+    #arc-toggle.mode-all { border-color: rgba(255,68,68,0.5); }
+    #arc-toggle.mode-all .arc-icon { border-color: #ff4444; }
+    #arc-toggle.mode-location { border-color: rgba(255,160,60,0.5); }
+    #arc-toggle.mode-location .arc-icon { border-color: #ffa03c; }
+    #arc-toggle.mode-off { opacity: 0.5; }
+
     /* Location group popup (multiple videos) */
     .group-list { max-height: 300px; overflow-y: auto; }
     .group-list .video-item { padding: 10px 16px; }
@@ -250,6 +289,8 @@
         border-top: 1px solid rgba(255,255,255,0.12);
         border-radius: 16px 16px 0 0;
         transform: translateX(0) translateY(0);
+        backdrop-filter: none;
+        background: rgba(10, 10, 15, 0.97);
       }
       #sidebar.hidden {
         transform: translateY(100%);
@@ -271,6 +312,12 @@
         left: 50%;
         bottom: calc(55vh + 8px);
       }
+      #arc-toggle {
+        bottom: 12px;
+        right: 12px;
+        font-size: 11px;
+        padding: 6px 10px;
+      }
     }
   </style>
 </head>
@@ -291,6 +338,10 @@
 <button id="toggle-sidebar" title="Menü">&#9776;</button>
 
 <div id="globeViz"></div>
+<button id="arc-toggle" class="mode-location" title="Yolculuk rotası modu">
+  <span class="arc-icon"></span>
+  <span class="arc-label">Rota: Lokasyon</span>
+</button>
 
 <div id="popup-overlay" onclick="if(event.target===this)closePopup()">
   <div id="popup">
@@ -312,6 +363,9 @@
 let allVideos = [];
 let globe;
 let activeCountry = null;
+let arcMode = 'location'; // 'off', 'all', 'location'
+let journeyData = []; // sorted journey points for arc building
+const isMobile = window.innerWidth <= 768;
 
 async function init() {
   const res = await fetch('videos.json');
@@ -321,10 +375,11 @@ async function init() {
   document.getElementById('stats').textContent =
     `${withLocation.length} video  ·  ${new Set(withLocation.map(v => v.country)).size} ülke`;
 
-  // Group videos by location (round to 1 decimal to cluster nearby)
+  // Group videos by location (mobile: round to 0 decimal for aggressive clustering)
+  const precision = isMobile ? 0 : 1;
   const groups = {};
   withLocation.forEach(v => {
-    const key = `${v.lat.toFixed(1)},${v.lng.toFixed(1)}`;
+    const key = `${v.lat.toFixed(precision)},${v.lng.toFixed(precision)}`;
     if (!groups[key]) groups[key] = { lat: v.lat, lng: v.lng, country: v.country, city: v.city, videos: [] };
     groups[key].videos.push(v);
   });
@@ -339,14 +394,15 @@ async function init() {
   });
 
   // Initialize globe
-  globe = Globe()(document.getElementById('globeViz'))
+  const globeEl = document.getElementById('globeViz');
+  globe = Globe({ rendererConfig: { antialias: !isMobile } })(globeEl)
     .globeImageUrl('//unpkg.com/three-globe/example/img/earth-night.jpg')
     .backgroundImageUrl('//unpkg.com/three-globe/example/img/night-sky.png')
     .pointsData(pointsData)
     .pointLat(d => d.lat)
     .pointLng(d => d.lng)
-    .pointAltitude(d => Math.min(d.videos.length * 0.04, 0.5))
-    .pointRadius(d => 0.3 + Math.min(d.videos.length * 0.15, 1.2))
+    .pointAltitude(d => Math.min(d.videos.length * 0.03, 0.4))
+    .pointRadius(d => 0.15 + Math.min(d.videos.length * 0.06, 0.45))
     .pointColor(d => colors[d.country] || '#ff4444')
     .pointLabel(d => {
       const count = d.videos.length;
@@ -356,6 +412,10 @@ async function init() {
       </div>`;
     })
     .onPointClick(d => {
+      // Show location arcs if in location mode
+      if (arcMode === 'location') {
+        showLocationArcs(d);
+      }
       if (d.videos.length === 1) {
         showPopup(d.videos[0]);
       } else {
@@ -363,14 +423,22 @@ async function init() {
       }
     })
     .pointsMerge(false)
-    .pointsTransitionDuration(800);
+    .pointsTransitionDuration(isMobile ? 400 : 800);
+
+  // Mobile: lower pixel ratio for performance
+  if (isMobile) {
+    globe.renderer().setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+  }
+
+  // Prepare journey data for arc modes
+  prepareJourneyData(withLocation);
 
   // Start view on Turkey
   globe.pointOfView({ lat: 39.9, lng: 32.8, altitude: 2.2 }, 0);
 
   // Auto-rotate
   globe.controls().autoRotate = true;
-  globe.controls().autoRotateSpeed = 0.5;
+  globe.controls().autoRotateSpeed = 0.2;
   globe.controls().enableDamping = true;
 
   // Build country filter
@@ -453,6 +521,7 @@ function renderVideoList(videos) {
       <div class="video-info">
         <h3>${escHtml(v.title)}</h3>
         <div class="location-badge">${v.city ? v.city + ', ' : ''}${v.country || 'Bilinmeyen'}</div>
+        ${v.uploadDate ? `<div class="date-badge">${formatDate(v.uploadDate)}</div>` : ''}
       </div>
     `;
     item.onclick = () => {
@@ -471,8 +540,9 @@ function renderVideoList(videos) {
 function showPopup(video) {
   document.getElementById('popup-thumb').src = `https://i.ytimg.com/vi/${video.id}/hqdefault.jpg`;
   document.getElementById('popup-title').textContent = video.title;
-  document.getElementById('popup-location').textContent =
-    video.city ? `${video.city}, ${video.country}` : (video.country || '');
+  const locText = video.city ? `${video.city}, ${video.country}` : (video.country || '');
+  const dateText = video.uploadDate ? ` · ${formatDate(video.uploadDate)}` : '';
+  document.getElementById('popup-location').textContent = locText + dateText;
   document.getElementById('popup-link').href = video.url;
   document.getElementById('popup-play').href = video.url;
   document.getElementById('popup-overlay').classList.add('show');
@@ -482,15 +552,23 @@ function showPopup(video) {
 function showGroupPopup(group) {
   const popup = document.getElementById('popup');
   const loc = group.city ? `${group.city}, ${group.country}` : group.country;
+  // Sort by date, newest first
+  const sorted = [...group.videos].sort((a, b) => {
+    if (!a.uploadDate && !b.uploadDate) return 0;
+    if (!a.uploadDate) return 1;
+    if (!b.uploadDate) return -1;
+    return b.uploadDate.localeCompare(a.uploadDate);
+  });
   popup.innerHTML = `
     <div class="popup-body">
-      <h2>${loc} (${group.videos.length} video)</h2>
+      <h2>${loc} (${sorted.length} video)</h2>
       <div class="group-list">
-        ${group.videos.map(v => `
+        ${sorted.map(v => `
           <div class="video-item" onclick="event.stopPropagation(); window.open('${v.url}', '_blank')">
             <img src="${v.thumbnail}" alt="" loading="lazy">
             <div class="video-info">
               <h3>${escHtml(v.title)}</h3>
+              ${v.uploadDate ? `<div class="date-badge">${formatDate(v.uploadDate)}</div>` : ''}
             </div>
           </div>
         `).join('')}
@@ -526,6 +604,132 @@ function escHtml(s) {
   return d.innerHTML;
 }
 
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  const [y, m, d] = dateStr.split('-');
+  const months = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
+  return `${parseInt(d)} ${months[parseInt(m)-1]} ${y}`;
+}
+
+function prepareJourneyData(videos) {
+  const dated = videos
+    .filter(v => v.uploadDate && v.lat != null)
+    .sort((a, b) => a.uploadDate.localeCompare(b.uploadDate));
+
+  journeyData = [];
+  for (const v of dated) {
+    const key = `${v.lat.toFixed(1)},${v.lng.toFixed(1)}`;
+    if (journeyData.length === 0 || journeyData[journeyData.length - 1].key !== key) {
+      journeyData.push({ lat: v.lat, lng: v.lng, key, date: v.uploadDate, country: v.country, city: v.city });
+    }
+  }
+
+  // Setup arc rendering defaults
+  globe
+    .arcStartLat(d => d.startLat)
+    .arcStartLng(d => d.startLng)
+    .arcEndLat(d => d.endLat)
+    .arcEndLng(d => d.endLng)
+    .arcStroke(0.4)
+    .arcDashLength(0.5)
+    .arcDashGap(0.3)
+    .arcDashAnimateTime(2000)
+    .arcsTransitionDuration(500);
+
+  updateArcs();
+}
+
+function updateArcs() {
+  if (arcMode === 'off') {
+    globe.arcsData([]);
+    return;
+  }
+  if (arcMode === 'all') {
+    const arcs = [];
+    for (let i = 0; i < journeyData.length - 1; i++) {
+      arcs.push({
+        startLat: journeyData[i].lat,
+        startLng: journeyData[i].lng,
+        endLat: journeyData[i + 1].lat,
+        endLng: journeyData[i + 1].lng
+      });
+    }
+    globe
+      .arcColor(() => ['rgba(255,68,68,0.4)', 'rgba(255,160,60,0.4)'])
+      .arcStroke(0.3)
+      .arcsData(arcs);
+  }
+  // 'location' mode: arcs set by showLocationArcs on click
+}
+
+function showLocationArcs(clickedPoint) {
+  if (arcMode !== 'location') return;
+  const clickedKey = `${clickedPoint.lat.toFixed(1)},${clickedPoint.lng.toFixed(1)}`;
+
+  // Find all journey indices matching this location
+  const indices = [];
+  journeyData.forEach((j, i) => { if (j.key === clickedKey) indices.push(i); });
+
+  if (indices.length === 0) { globe.arcsData([]); return; }
+
+  const arcs = [];
+  for (const idx of indices) {
+    // Arc coming IN (previous → this)
+    if (idx > 0) {
+      arcs.push({
+        startLat: journeyData[idx - 1].lat,
+        startLng: journeyData[idx - 1].lng,
+        endLat: journeyData[idx].lat,
+        endLng: journeyData[idx].lng,
+        type: 'in'
+      });
+    }
+    // Arc going OUT (this → next)
+    if (idx < journeyData.length - 1) {
+      arcs.push({
+        startLat: journeyData[idx].lat,
+        startLng: journeyData[idx].lng,
+        endLat: journeyData[idx + 1].lat,
+        endLng: journeyData[idx + 1].lng,
+        type: 'out'
+      });
+    }
+  }
+
+  // Deduplicate arcs
+  const seen = new Set();
+  const unique = arcs.filter(a => {
+    const k = `${a.startLat},${a.startLng}-${a.endLat},${a.endLng}`;
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+
+  globe
+    .arcColor(d => d.type === 'in'
+      ? ['rgba(100,180,255,0.8)', 'rgba(100,180,255,0.3)']
+      : ['rgba(255,68,68,0.3)', 'rgba(255,68,68,0.8)']
+    )
+    .arcStroke(0.6)
+    .arcsData(unique);
+}
+
+function cycleArcMode() {
+  const modes = ['off', 'all', 'location'];
+  const labels = { off: 'Rota: Kapalı', all: 'Rota: Tümü', location: 'Rota: Lokasyon' };
+  arcMode = modes[(modes.indexOf(arcMode) + 1) % modes.length];
+
+  const btn = document.getElementById('arc-toggle');
+  btn.className = `mode-${arcMode}`;
+  btn.querySelector('.arc-label').textContent = labels[arcMode];
+
+  if (arcMode === 'location') {
+    globe.arcsData([]); // Clear until a point is clicked
+  } else {
+    updateArcs();
+  }
+}
+
 // Start sidebar hidden on mobile
 if (window.innerWidth <= 768) {
   document.getElementById('sidebar').classList.add('hidden');
@@ -535,6 +739,9 @@ if (window.innerWidth <= 768) {
 document.getElementById('toggle-sidebar').onclick = () => {
   document.getElementById('sidebar').classList.toggle('hidden');
 };
+
+// Toggle arc mode
+document.getElementById('arc-toggle').onclick = cycleArcMode;
 
 init();
 </script>

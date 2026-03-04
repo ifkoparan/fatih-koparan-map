@@ -24,6 +24,9 @@ jobs:
       - name: Fetch new videos
         run: node scripts/fetch-videos.js
 
+      - name: Fetch upload dates for new videos
+        run: node scripts/fetch-dates.js
+
       - name: Geocode new videos
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}

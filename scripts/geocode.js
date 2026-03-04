@@ -107,7 +107,8 @@ async function main() {
           country: loc.country,
           city: loc.city,
           lat: loc.lat,
-          lng: loc.lng
+          lng: loc.lng,
+          uploadDate: video.uploadDate || null
         };
       }
     } catch (err) {
@@ -122,8 +123,8 @@ async function main() {
 
   // Merge with existing (keep geocoded data, add raw data for non-geocoded)
   const finalVideos = rawVideos.map(v => {
-    if (results[v.id]) return results[v.id];
-    return { ...v, country: null, city: null, lat: null, lng: null };
+    if (results[v.id]) return { ...results[v.id], uploadDate: v.uploadDate || results[v.id].uploadDate || null };
+    return { ...v, country: null, city: null, lat: null, lng: null, uploadDate: v.uploadDate || null };
   });
 
   fs.writeFileSync(OUTPUT_FILE, JSON.stringify(finalVideos, null, 2), 'utf-8');
