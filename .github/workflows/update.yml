@@ -19,7 +19,7 @@ jobs:
           node-version: '20'
 
       - name: Install yt-dlp
-        run: pip install yt-dlp
+        run: pip install --upgrade yt-dlp
 
       - name: Fetch new videos
         run: node scripts/fetch-videos.js
