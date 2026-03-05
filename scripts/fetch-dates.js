@@ -1,22 +1,40 @@
 #!/usr/bin/env node
-const { execSync } = require('child_process');
 const { exec } = require('child_process');
+const https = require('https');
 const fs = require('fs');
 const path = require('path');
 
 const RAW_FILE = path.join(__dirname, '..', 'raw_videos.json');
-const PARALLEL = 15;
+const PARALLEL = 5;
 
-async function getDate(videoId) {
+// Method 1: YouTube page scraping (works on GitHub Actions)
+function getDateFromPage(videoId) {
+  return new Promise((resolve) => {
+    const url = `https://www.youtube.com/watch?v=${videoId}`;
+    https.get(url, { headers: { 'User-Agent': 'Mozilla/5.0' } }, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        const match = data.match(/"uploadDate":"(\d{4}-\d{2}-\d{2})/);
+        if (match) {
+          resolve(match[1]);
+        } else {
+          resolve(null);
+        }
+      });
+    }).on('error', () => resolve(null));
+  });
+}
+
+// Method 2: yt-dlp fallback
+function getDateFromYtDlp(videoId) {
   return new Promise((resolve) => {
     exec(
       `yt-dlp --skip-download --remote-components ejs:github --print "%(upload_date)s" "https://www.youtube.com/watch?v=${videoId}"`,
       { timeout: 60000 },
-      (err, stdout, stderr) => {
-        if (stderr) console.error(`[${videoId}] stderr: ${stderr.trim().split('\n').slice(0, 3).join(' | ')}`);
-        if (err) { console.error(`[${videoId}] Error: ${err.message}`); resolve(null); return; }
+      (err, stdout) => {
+        if (err) { resolve(null); return; }
         const raw = stdout.trim();
-        console.log(`[${videoId}] raw output: "${raw}"`);
         if (raw.length === 8 && raw !== 'NA') {
           resolve(`${raw.slice(0,4)}-${raw.slice(4,6)}-${raw.slice(6,8)}`);
         } else {
@@ -25,6 +43,24 @@ async function getDate(videoId) {
       }
     );
   });
+}
+
+async function getDate(videoId) {
+  // Try page scraping first, fall back to yt-dlp
+  let date = await getDateFromPage(videoId);
+  if (date) {
+    console.log(`[${videoId}] Found date via page: ${date}`);
+    return date;
+  }
+
+  date = await getDateFromYtDlp(videoId);
+  if (date) {
+    console.log(`[${videoId}] Found date via yt-dlp: ${date}`);
+    return date;
+  }
+
+  console.log(`[${videoId}] Could not fetch date`);
+  return null;
 }
 
 async function processBatch(videos) {
@@ -61,7 +97,6 @@ async function main() {
     console.log(`Progress: ${done}/${needDates.length} processed, ${found} dates found`);
   }
 
-  // Update raw_videos.json
   const updated = rawVideos.map(v => ({
     ...v,
     uploadDate: dateMap[v.id] || v.uploadDate || null
