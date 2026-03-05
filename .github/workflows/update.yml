@@ -1,8 +1,8 @@
-name: Weekly Video Update
+name: Daily Video Update
 
 on:
   schedule:
-    - cron: '0 6 * * 1'  # Her Pazartesi 06:00 UTC
+    - cron: '0 2,10,18 * * *'  # Günde 3 kez: 02:00, 10:00, 18:00 UTC (TR 05:00, 13:00, 21:00)
   workflow_dispatch:  # Manuel tetikleme
 
 permissions:
