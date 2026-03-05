@@ -10,7 +10,7 @@ const PARALLEL = 15;
 async function getDate(videoId) {
   return new Promise((resolve) => {
     exec(
-      `yt-dlp --skip-download --print "%(upload_date)s" "https://www.youtube.com/watch?v=${videoId}"`,
+      `yt-dlp --skip-download --remote-components ejs:github --print "%(upload_date)s" "https://www.youtube.com/watch?v=${videoId}"`,
       { timeout: 30000 },
       (err, stdout) => {
         if (err) { resolve(null); return; }

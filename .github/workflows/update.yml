@@ -18,6 +18,11 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Install Deno (for yt-dlp JS challenge solving)
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
       - name: Install yt-dlp
         run: pip install --upgrade yt-dlp
 

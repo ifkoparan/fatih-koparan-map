@@ -9,7 +9,7 @@ const OUTPUT_FILE = path.join(__dirname, '..', 'raw_videos.json');
 console.log('Fetching videos from Fatih Koparan channel...');
 
 const output = execSync(
-  `yt-dlp --flat-playlist --print "%(id)s\t%(title)s\t%(upload_date)s" "${CHANNEL_URL}"`,
+  `yt-dlp --flat-playlist --remote-components ejs:github --print "%(id)s\t%(title)s\t%(upload_date)s" "${CHANNEL_URL}"`,
   { encoding: 'utf-8', maxBuffer: 10 * 1024 * 1024 }
 );
 
