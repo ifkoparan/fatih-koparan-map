@@ -281,6 +281,28 @@
     #arc-toggle.mode-location .arc-icon { border-color: #ffa03c; }
     #arc-toggle.mode-off { opacity: 0.5; }
 
+    /* Language toggle */
+    #lang-toggle {
+      display: flex;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 16px;
+      overflow: hidden;
+      font-size: 12px;
+      cursor: pointer;
+      margin-left: 12px;
+    }
+    #lang-toggle span {
+      padding: 4px 12px;
+      transition: all 0.2s;
+      color: rgba(255,255,255,0.5);
+      user-select: none;
+    }
+    #lang-toggle span.active {
+      background: rgba(255,68,68,0.3);
+      color: #fff;
+    }
+
     /* Location group popup (multiple videos) */
     .group-list { max-height: 300px; overflow-y: auto; }
     .group-list .video-item { padding: 10px 16px; }
@@ -334,8 +356,14 @@
 <body>
 
 <div id="header">
-  <h1><span>&#9679;</span> Fatih Koparan <span>|</span> Dünya Haritası</h1>
-  <div id="stats"></div>
+  <h1><span>&#9679;</span> Fatih Koparan <span>|</span> <span id="header-title">Dünya Haritası</span></h1>
+  <div style="display:flex;align-items:center;gap:8px">
+    <div id="stats"></div>
+    <div id="lang-toggle">
+      <span class="active" data-lang="tr">TR</span>
+      <span data-lang="en">EN</span>
+    </div>
+  </div>
 </div>
 
 <div id="sidebar">
@@ -364,7 +392,7 @@
     <div class="popup-body">
       <h2 id="popup-title"></h2>
       <div class="popup-location" id="popup-location"></div>
-      <a id="popup-link" href="" target="_blank">YouTube'da İzle</a>
+      <a id="popup-link" href="" target="_blank" data-i18n="watchOnYT">YouTube'da İzle</a>
     </div>
   </div>
 </div>
@@ -376,31 +404,82 @@ let activeCountry = null;
 let arcMode = 'location'; // 'off', 'all', 'location'
 let journeyData = []; // sorted journey points for arc building
 const isMobile = window.innerWidth <= 768;
+let currentLang = localStorage.getItem('lang') || 'tr';
+let countryColors = {};
+let countryList = [];
+
+const i18n = {
+  tr: {
+    worldMap: 'Dünya Haritası',
+    stats: (v, c) => `${v} video  ·  ${c} ülke`,
+    searchPlaceholder: 'Video veya ülke ara...',
+    all: n => `Tümü (${n})`,
+    unknown: 'Bilinmeyen',
+    watchOnYT: "YouTube'da İzle",
+    routeOff: 'Rota: Kapalı',
+    routeAll: 'Rota: Tümü',
+    routeLocation: 'Rota: Lokasyon',
+    menuTitle: 'Menü',
+  },
+  en: {
+    worldMap: 'World Map',
+    stats: (v, c) => `${v} videos  ·  ${c} countries`,
+    searchPlaceholder: 'Search videos or countries...',
+    all: n => `All (${n})`,
+    unknown: 'Unknown',
+    watchOnYT: 'Watch on YouTube',
+    routeOff: 'Route: Off',
+    routeAll: 'Route: All',
+    routeLocation: 'Route: Location',
+    menuTitle: 'Menu',
+  }
+};
+
+function t(key, ...args) {
+  const val = i18n[currentLang][key];
+  return typeof val === 'function' ? val(...args) : val;
+}
+
+function getTitle(video) {
+  return currentLang === 'tr' ? (video.titleTr || video.titleEn || video.title || '') : (video.titleEn || video.titleTr || video.title || '');
+}
+
+function getCountry(video) {
+  return currentLang === 'tr' ? (video.countryTr || video.country || '') : (video.country || video.countryTr || '');
+}
+
+function getCity(video) {
+  return currentLang === 'tr' ? (video.cityTr || video.city || '') : (video.city || video.cityTr || '');
+}
+
+function getLocation(video) {
+  const city = getCity(video);
+  const country = getCountry(video);
+  return city ? `${city}, ${country}` : country;
+}
 
 async function init() {
   const res = await fetch('videos.json');
   allVideos = await res.json();
 
   const withLocation = allVideos.filter(v => v.lat != null);
-  document.getElementById('stats').textContent =
-    `${withLocation.length} video  ·  ${new Set(withLocation.map(v => v.country)).size} ülke`;
+  updateUIStrings(withLocation);
 
   // Group videos by location (mobile: round to 0 decimal for aggressive clustering)
   const precision = isMobile ? 0 : 1;
   const groups = {};
   withLocation.forEach(v => {
     const key = `${v.lat.toFixed(precision)},${v.lng.toFixed(precision)}`;
-    if (!groups[key]) groups[key] = { lat: v.lat, lng: v.lng, country: v.country, city: v.city, videos: [] };
+    if (!groups[key]) groups[key] = { lat: v.lat, lng: v.lng, country: v.country, countryTr: v.countryTr, city: v.city, cityTr: v.cityTr, videos: [] };
     groups[key].videos.push(v);
   });
   const pointsData = Object.values(groups);
 
   // Color palette by country
-  const countries = [...new Set(withLocation.map(v => v.country))].sort();
-  const colors = {};
-  countries.forEach((c, i) => {
+  countryList = [...new Set(withLocation.map(v => v.country))].sort();
+  countryList.forEach((c, i) => {
     const hue = (i * 137.5) % 360;
-    colors[c] = `hsl(${hue}, 70%, 60%)`;
+    countryColors[c] = `hsl(${hue}, 70%, 60%)`;
   });
 
   // Initialize globe
@@ -413,10 +492,12 @@ async function init() {
     .pointLng(d => d.lng)
     .pointAltitude(d => Math.min(d.videos.length * 0.03, 0.4))
     .pointRadius(d => 0.15 + Math.min(d.videos.length * 0.06, 0.45))
-    .pointColor(d => colors[d.country] || '#ff4444')
+    .pointColor(d => countryColors[d.country] || '#ff4444')
     .pointLabel(d => {
       const count = d.videos.length;
-      const loc = d.city ? `${d.city}, ${d.country}` : d.country;
+      const city = currentLang === 'tr' ? (d.cityTr || d.city) : (d.city || d.cityTr);
+      const country = currentLang === 'tr' ? (d.countryTr || d.country) : (d.country || d.countryTr);
+      const loc = city ? `${city}, ${country}` : country;
       return `<div style="font-family:system-ui;background:rgba(0,0,0,0.8);padding:6px 12px;border-radius:8px;font-size:13px;line-height:1.4">
         <b>${loc}</b><br><span style="opacity:0.7">${count} video</span>
       </div>`;
@@ -480,30 +561,37 @@ async function init() {
   });
 
   // Build country filter
-  buildCountryFilter(countries, colors);
+  buildCountryFilter();
 
   // Build video list
   renderVideoList(withLocation);
 
-  // Search
+  // Search (searches both languages)
   document.getElementById('search').addEventListener('input', e => {
     const q = e.target.value.toLowerCase();
-    const filtered = withLocation.filter(v =>
-      v.title.toLowerCase().includes(q) ||
+    const base = activeCountry ? withLocation.filter(v => v.country === activeCountry) : withLocation;
+    const filtered = base.filter(v =>
+      (v.titleTr && v.titleTr.toLowerCase().includes(q)) ||
+      (v.titleEn && v.titleEn.toLowerCase().includes(q)) ||
+      (v.title && v.title.toLowerCase().includes(q)) ||
       (v.country && v.country.toLowerCase().includes(q)) ||
-      (v.city && v.city.toLowerCase().includes(q))
+      (v.countryTr && v.countryTr.toLowerCase().includes(q)) ||
+      (v.city && v.city.toLowerCase().includes(q)) ||
+      (v.cityTr && v.cityTr.toLowerCase().includes(q))
     );
     renderVideoList(filtered);
   });
 }
 
-function buildCountryFilter(countries, colors) {
+function buildCountryFilter() {
   const container = document.getElementById('country-filter');
+  container.innerHTML = '';
 
   // "All" tag
   const allTag = document.createElement('span');
   allTag.className = 'country-tag active';
-  allTag.textContent = `Tümü (${allVideos.filter(v => v.lat).length})`;
+  allTag.textContent = t('all', allVideos.filter(v => v.lat).length);
+  allTag.id = 'all-tag';
   allTag.onclick = () => {
     activeCountry = null;
     document.querySelectorAll('.country-tag').forEach(t => t.classList.remove('active'));
@@ -514,12 +602,15 @@ function buildCountryFilter(countries, colors) {
   };
   container.appendChild(allTag);
 
-  countries.forEach(country => {
+  countryList.forEach(country => {
     const count = allVideos.filter(v => v.country === country && v.lat).length;
+    const trName = allVideos.find(v => v.country === country && v.countryTr);
+    const displayName = currentLang === 'tr' && trName ? (trName.countryTr || country) : country;
     const tag = document.createElement('span');
     tag.className = 'country-tag';
-    tag.textContent = `${country} (${count})`;
-    tag.style.borderColor = colors[country];
+    tag.dataset.country = country;
+    tag.textContent = `${displayName} (${count})`;
+    tag.style.borderColor = countryColors[country];
     tag.onclick = () => {
       activeCountry = country;
       document.querySelectorAll('.country-tag').forEach(t => t.classList.remove('active'));
@@ -542,7 +633,7 @@ function updateGlobePoints(videos) {
   const groups = {};
   videos.forEach(v => {
     const key = `${v.lat.toFixed(1)},${v.lng.toFixed(1)}`;
-    if (!groups[key]) groups[key] = { lat: v.lat, lng: v.lng, country: v.country, city: v.city, videos: [] };
+    if (!groups[key]) groups[key] = { lat: v.lat, lng: v.lng, country: v.country, countryTr: v.countryTr, city: v.city, cityTr: v.cityTr, videos: [] };
     groups[key].videos.push(v);
   });
   globe.pointsData(Object.values(groups));
@@ -557,8 +648,8 @@ function renderVideoList(videos) {
     item.innerHTML = `
       <img src="${v.thumbnail}" alt="" loading="lazy">
       <div class="video-info">
-        <h3>${escHtml(v.title)}</h3>
-        <div class="location-badge">${v.city ? v.city + ', ' : ''}${v.country || 'Bilinmeyen'}</div>
+        <h3>${escHtml(getTitle(v))}</h3>
+        <div class="location-badge">${getLocation(v) || t('unknown')}</div>
         ${v.uploadDate ? `<div class="date-badge">${formatDate(v.uploadDate)}</div>` : ''}
       </div>
     `;
@@ -577,14 +668,15 @@ function renderVideoList(videos) {
 
 function showPopup(video) {
   document.getElementById('popup-thumb').src = `https://i.ytimg.com/vi/${video.id}/hqdefault.jpg`;
-  document.getElementById('popup-title').textContent = video.title;
-  const locText = video.city ? `${video.city}, ${video.country}` : (video.country || '');
+  document.getElementById('popup-title').textContent = getTitle(video);
+  const locText = getLocation(video);
   const dateText = video.uploadDate ? ` · ${formatDate(video.uploadDate)}` : '';
   document.getElementById('popup-location').textContent = locText + dateText;
   const playBtn = document.getElementById('popup-play');
   const linkBtn = document.getElementById('popup-link');
   playBtn.href = video.url;
   linkBtn.href = video.url;
+  linkBtn.textContent = t('watchOnYT');
   // Disable clicks for 1s to prevent accidental double-click
   playBtn.style.pointerEvents = 'none';
   linkBtn.style.pointerEvents = 'none';
@@ -598,7 +690,9 @@ function showPopup(video) {
 
 function showGroupPopup(group) {
   const popup = document.getElementById('popup');
-  const loc = group.city ? `${group.city}, ${group.country}` : group.country;
+  const city = currentLang === 'tr' ? (group.cityTr || group.city) : (group.city || group.cityTr);
+  const country = currentLang === 'tr' ? (group.countryTr || group.country) : (group.country || group.countryTr);
+  const loc = city ? `${city}, ${country}` : country;
   // Sort by date, newest first
   const sorted = [...group.videos].sort((a, b) => {
     if (!a.uploadDate && !b.uploadDate) return 0;
@@ -614,7 +708,7 @@ function showGroupPopup(group) {
           <div class="video-item no-click" onclick="event.stopPropagation(); if(!this.classList.contains('no-click')) window.open('${v.url}', '_blank')">
             <img src="${v.thumbnail}" alt="" loading="lazy">
             <div class="video-info">
-              <h3>${escHtml(v.title)}</h3>
+              <h3>${escHtml(getTitle(v))}</h3>
               ${v.uploadDate ? `<div class="date-badge">${formatDate(v.uploadDate)}</div>` : ''}
             </div>
           </div>
@@ -643,7 +737,7 @@ function closePopup() {
     <div class="popup-body">
       <h2 id="popup-title"></h2>
       <div class="popup-location" id="popup-location"></div>
-      <a id="popup-link" href="" target="_blank">YouTube'da İzle</a>
+      <a id="popup-link" href="" target="_blank">${t('watchOnYT')}</a>
     </div>
   `;
   globe.controls().autoRotate = true;
@@ -658,7 +752,9 @@ function escHtml(s) {
 function formatDate(dateStr) {
   if (!dateStr) return '';
   const [y, m, d] = dateStr.split('-');
-  const months = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
+  const monthsTr = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
+  const monthsEn = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const months = currentLang === 'tr' ? monthsTr : monthsEn;
   return `${parseInt(d)} ${months[parseInt(m)-1]} ${y}`;
 }
 
@@ -767,7 +863,7 @@ function showLocationArcs(clickedPoint) {
 
 function cycleArcMode() {
   const modes = ['off', 'all', 'location'];
-  const labels = { off: 'Rota: Kapalı', all: 'Rota: Tümü', location: 'Rota: Lokasyon' };
+  const labels = { off: t('routeOff'), all: t('routeAll'), location: t('routeLocation') };
   arcMode = modes[(modes.indexOf(arcMode) + 1) % modes.length];
 
   const btn = document.getElementById('arc-toggle');
@@ -793,6 +889,70 @@ document.getElementById('toggle-sidebar').onclick = () => {
 
 // Toggle arc mode
 document.getElementById('arc-toggle').onclick = cycleArcMode;
+
+// Language toggle
+document.getElementById('lang-toggle').addEventListener('click', e => {
+  const lang = e.target.dataset.lang;
+  if (!lang || lang === currentLang) return;
+  currentLang = lang;
+  localStorage.setItem('lang', lang);
+  document.documentElement.lang = lang;
+
+  // Update toggle UI
+  document.querySelectorAll('#lang-toggle span').forEach(s =>
+    s.classList.toggle('active', s.dataset.lang === lang)
+  );
+
+  // Re-render everything
+  const withLocation = allVideos.filter(v => v.lat != null);
+  const searchQ = document.getElementById('search').value.toLowerCase();
+  let filtered = activeCountry
+    ? withLocation.filter(v => v.country === activeCountry)
+    : withLocation;
+  if (searchQ) {
+    filtered = filtered.filter(v =>
+      (v.titleTr && v.titleTr.toLowerCase().includes(searchQ)) ||
+      (v.titleEn && v.titleEn.toLowerCase().includes(searchQ)) ||
+      (v.title && v.title.toLowerCase().includes(searchQ)) ||
+      (v.country && v.country.toLowerCase().includes(searchQ)) ||
+      (v.countryTr && v.countryTr.toLowerCase().includes(searchQ)) ||
+      (v.city && v.city.toLowerCase().includes(searchQ)) ||
+      (v.cityTr && v.cityTr.toLowerCase().includes(searchQ))
+    );
+  }
+  renderVideoList(filtered);
+  buildCountryFilter();
+  // Re-select active country tag if any
+  if (activeCountry) {
+    document.querySelectorAll('.country-tag').forEach(t => {
+      if (t.dataset.country === activeCountry) t.classList.add('active');
+    });
+    document.getElementById('all-tag').classList.remove('active');
+  }
+  updateUIStrings(withLocation);
+});
+
+function updateUIStrings(withLocation) {
+  const countryCount = new Set(withLocation.map(v => v.country)).size;
+  document.getElementById('stats').textContent = t('stats', withLocation.length, countryCount);
+  document.getElementById('header-title').textContent = t('worldMap');
+  document.getElementById('search').placeholder = t('searchPlaceholder');
+  document.getElementById('toggle-sidebar').title = t('menuTitle');
+  const arcLabels = { off: t('routeOff'), all: t('routeAll'), location: t('routeLocation') };
+  const arcLabel = document.querySelector('.arc-label');
+  if (arcLabel) arcLabel.textContent = arcLabels[arcMode];
+  const allTag = document.getElementById('all-tag');
+  if (allTag) allTag.textContent = t('all', allVideos.filter(v => v.lat).length);
+  document.title = `Fatih Koparan - ${t('worldMap')}`;
+}
+
+// Apply saved language on load
+if (currentLang !== 'tr') {
+  document.documentElement.lang = currentLang;
+  document.querySelectorAll('#lang-toggle span').forEach(s =>
+    s.classList.toggle('active', s.dataset.lang === currentLang)
+  );
+}
 
 init();
 </script>
