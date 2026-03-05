@@ -11,10 +11,12 @@ async function getDate(videoId) {
   return new Promise((resolve) => {
     exec(
       `yt-dlp --skip-download --remote-components ejs:github --print "%(upload_date)s" "https://www.youtube.com/watch?v=${videoId}"`,
-      { timeout: 30000 },
-      (err, stdout) => {
-        if (err) { resolve(null); return; }
+      { timeout: 60000 },
+      (err, stdout, stderr) => {
+        if (stderr) console.error(`[${videoId}] stderr: ${stderr.trim().split('\n').slice(0, 3).join(' | ')}`);
+        if (err) { console.error(`[${videoId}] Error: ${err.message}`); resolve(null); return; }
         const raw = stdout.trim();
+        console.log(`[${videoId}] raw output: "${raw}"`);
         if (raw.length === 8 && raw !== 'NA') {
           resolve(`${raw.slice(0,4)}-${raw.slice(4,6)}-${raw.slice(6,8)}`);
         } else {
